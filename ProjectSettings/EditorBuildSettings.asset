@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Art/Cenas/menuPrincipal.unity
+    guid: 5b3e7a1c92d64f80a4c1e8b73f025d69
+  - enabled: 1
+    path: Assets/Art/Cenas/menuFases.unity
+    guid: 8c47f2b90e5a134d9b6f03a1c7e28d54
+  - enabled: 1
+    path: Assets/Art/fase01.unity
+    guid: 46ce0acdc3ee8ac4286a6088f5e49a6a
+  - enabled: 1
+    path: Assets/Art/fase02.unity
+    guid: 6f4b8d2a71e93c5048ab6f217d3e905c
+  - enabled: 1
+    path: Assets/Art/Cenas/morte.unity
+    guid: d19a6c3f70b8e245a8f42d05169b3c7e
