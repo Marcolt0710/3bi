@@ -22,6 +22,12 @@ public class Plataforma : MonoBehaviour
     // - (1, 0.5f)   → Movimento em ângulo de ~26.6°
     // Qualquer combinação de valores x e y para direções personalizadas
 
+    // Se false, a plataforma comeca parada e so se move depois que
+    // alguma Alavanca chamar Ativar() nela (efeito de toque indireto:
+    // o jogador toca a alavanca, nao esta plataforma).
+    public bool AtivaAoIniciar = true;
+    bool Ativa;
+
     void Start()
     {
         // Obtém o componente Transform do objeto atual
@@ -32,12 +38,24 @@ public class Plataforma : MonoBehaviour
 
         // Inicializa o tempo decorrido como zero
         TempoDecorrido = 0f;
+
+        Ativa = AtivaAoIniciar;
     }
 
     // Método chamado a cada frame
     void Update()
     {
-        mover(); // Chama a função de movimento a cada frame
+        if (Ativa == true)
+        {
+            mover(); // Chama a função de movimento a cada frame
+        }
+    }
+
+    // Chamado por uma Alavanca para "ligar" uma plataforma que
+    // comecou dormente (AtivaAoIniciar = false).
+    public void Ativar()
+    {
+        Ativa = true;
     }
 
     // Função que controla o movimento da plataforma

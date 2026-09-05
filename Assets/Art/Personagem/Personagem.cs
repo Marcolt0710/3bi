@@ -1,7 +1,16 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class Personagem : MonoBehaviour {
+
+	// ----- boost de pulo temporario (bonusPuloTemporario) -----
+	public float DuracaoBoostPulo = 5.0f;
+	public float MultiplicadorBoostPulo = 1.6f;
+	public float TempoRestanteBoost; // usado pelo HUD pra mostrar a contagem regressiva
+	float VelocidadePuloBase;
+	Coroutine BoostPuloEmAndamento;
+
 	GameObject ObjetoEmContato;      // caixa que esta encostada no personagem
 	GameObject ObjetoCarregado;      // caixa que esta nas maos
 	Rigidbody2D CorpoRigidoObjeto;   // corpo rigido da caixa carregada
@@ -53,6 +62,7 @@ public class Personagem : MonoBehaviour {
 		EstaTocandoAlgumColisor = false;
 
 		VelocidadePuloSimples = 10.0f;
+		VelocidadePuloBase = VelocidadePuloSimples;
 
 		CorpoRigidoPersonagem = GetComponent<Rigidbody2D> ();
 		if (CorpoRigidoPersonagem == null) {
@@ -207,8 +217,10 @@ public class Personagem : MonoBehaviour {
 		CorpoRigidoPersonagem.velocity = VetorVelocidadePersonagem;
 	}
 
-	void OnCollisionEnter2D(Collision2D objetoTocado ){	
+	void OnCollisionEnter2D(Collision2D objetoTocado ){
 		TagObjetoTocado = objetoTocado.gameObject.tag;
+
+		VerificarDestrutivel (objetoTocado);
 
 		if (TagObjetoTocado.Contains("chao")) {
 			print ("Tocou TAG: chao");
@@ -226,6 +238,14 @@ public class Personagem : MonoBehaviour {
 		}
 		if (TagObjetoTocado == "bonusPuloDuplo") {
 			TotalPulos = 2;
+			Destroy (objetoTocado.gameObject);
+		}
+
+		// bonusPuloTemporario e a tag do item que pulou pra fora do
+		// bloco (ver VerificarDestrutivel). So chega aqui depois de
+		// ja ter saido do "objeto dentro de outro".
+		if (TagObjetoTocado == "bonusPuloTemporario") {
+			IniciarBoostPulo (DuracaoBoostPulo, MultiplicadorBoostPulo);
 			Destroy (objetoTocado.gameObject);
 		}
 
@@ -307,6 +327,72 @@ public class Personagem : MonoBehaviour {
 				ObjetoEmContato = null;
 			}
 		}
+	}
+
+	// "Objeto dentro de outro": o BlocoImpulso (destrutivel1) carrega
+	// escondido dentro dele um NucleoImpulso (o item bonusPuloTemporario).
+	// Ao ser tocado, o filho ganha fisica na hora, sai voando pra cima
+	// (igual bloco de interrogacao) e o bloco em si e destruido.
+	void VerificarDestrutivel(Collision2D objetoTocado){
+
+		if (TagObjetoTocado.Contains ("destrutivel2")) {
+			GameObject capa = objetoTocado.transform.GetChild (0).gameObject;   // filho zero
+			GameObject item = objetoTocado.transform.GetChild (1).gameObject;   // filho um, escondido atras da capa
+
+			capa.transform.parent = null;
+			item.transform.parent = null;
+
+			item.GetComponent<SpriteRenderer> ().enabled = true;
+			item.AddComponent<BoxCollider2D> ();
+			item.AddComponent<Rigidbody2D> ();
+			item.GetComponent<Rigidbody2D> ().velocity = new Vector2 (0, 10);
+			item.tag = "bonusPuloTemporario";
+
+			Destroy (capa);
+			Destroy (objetoTocado.gameObject);
+		}
+
+		if (TagObjetoTocado.Contains ("destrutivel1")) {
+			GameObject item = objetoTocado.transform.GetChild (0).gameObject; // filho zero, escondido dentro do bloco
+
+			item.transform.parent = null;
+
+			item.GetComponent<SpriteRenderer> ().enabled = true;
+			item.AddComponent<BoxCollider2D> ();
+			item.AddComponent<Rigidbody2D> ();
+			item.GetComponent<Rigidbody2D> ().velocity = new Vector2 (0, 10);
+			item.tag = "bonusPuloTemporario";
+
+			Destroy (objetoTocado.gameObject);
+		}
+	}
+
+	void IniciarBoostPulo(float duracao, float multiplicador){
+		// Se ja tem um boost rodando, cancela o antigo antes de comecar
+		// o novo, senao os dois coroutines disputariam o valor final.
+		if (BoostPuloEmAndamento != null) {
+			StopCoroutine (BoostPuloEmAndamento);
+		}
+
+		BoostPuloEmAndamento = StartCoroutine (BoostPuloTemporario (duracao, multiplicador));
+	}
+
+	IEnumerator BoostPuloTemporario(float duracao, float multiplicador){
+		VelocidadePuloSimples = VelocidadePuloBase * multiplicador;
+		TempoRestanteBoost = duracao;
+		print ("boost de pulo ativado por " + duracao + "s");
+
+		// Conta regressivamente em vez de um WaitForSeconds unico,
+		// pra dar pro HUD um valor de TempoRestanteBoost pra mostrar.
+		while (TempoRestanteBoost > 0f) {
+			TempoRestanteBoost -= Time.deltaTime;
+			yield return null;
+		}
+
+		TempoRestanteBoost = 0f;
+		VelocidadePuloSimples = VelocidadePuloBase;
+		BoostPuloEmAndamento = null;
+		print ("boost de pulo encerrado");
 	}
 
 	void ControlarCarga(){
