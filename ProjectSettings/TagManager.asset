@@ -17,6 +17,10 @@ TagManager:
   - tipo2
   - bonusPuloUnico
   - bonusPuloDuplo
+  - bonusPuloTemporario
+  - alavanca
+  - destrutivel1
+  - destrutivel2
   layers:
   - Default
   - TransparentFX
