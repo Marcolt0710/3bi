@@ -20,3 +20,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Art/Cenas/morte.unity
     guid: d19a6c3f70b8e245a8f42d05169b3c7e
+  - enabled: 1
+    path: Assets/Art/Cenas/creditos.unity
+    guid: 09d731f4d3eb0084aa21fecf5078a7d7
