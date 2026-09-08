@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 public class Personagem : MonoBehaviour {
 
 	// ----- boost de pulo temporario (bonusPuloTemporario) -----
-	public float DuracaoBoostPulo = 5.0f;
+	public float DuracaoBoostPulo = 8.0f;
 	public float MultiplicadorBoostPulo = 1.6f;
 	public float TempoRestanteBoost; // usado pelo HUD pra mostrar a contagem regressiva
 	float VelocidadePuloBase;

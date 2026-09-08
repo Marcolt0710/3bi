@@ -1,0 +1,784 @@
+﻿===============================================================================
+           GUIA DE APRESENTACAO - PROJETO 3o BIMESTRE - JOGOS
+           Jogo de plataforma 2D em Unity 2017.4
+===============================================================================
+
+COMO USAR ESTE ARQUIVO:
+  A PARTE 1 e o resumao pra ler 10 minutos antes de apresentar.
+  A PARTE 2 explica CADA SCRIPT e CADA FUNCAO, uma por uma.
+  A PARTE 3 explica os CONCEITOS que o professor costuma perguntar.
+  A PARTE 4 tem as PERGUNTAS PROVAVEIS com as respostas prontas.
+  A PARTE 5 e a lista de pontos fracos - leia pra nao ser pego de surpresa.
+
+
+===============================================================================
+PARTE 1 - RESUMO RAPIDO
+===============================================================================
+
+O QUE E O JOGO
+  Jogo de plataforma 2D. O personagem anda, pula, carrega caixas, quebra
+  blocos, pega moedas, foge de inimigo e sobe de fase.
+
+AS CENAS (arquivos .unity)
+  menuPrincipal .... tela inicial com botao de jogar
+  menuFases ........ escolha de fase
+  fase01 ........... primeira fase (a maior parte das mecanicas esta aqui)
+  fase02 ........... segunda fase (aqui esta o TOQUE INDIRETO)
+  morte ............ tela de game over
+  creditos ......... creditos rolando no final
+
+OS 5 REQUISITOS DO PROJETO E ONDE CADA UM ESTA
+  1) Mover itens de um lado pro outro segurando uma tecla
+     -> Personagem.cs, funcao ControlarCarga(). Tecla F. Fase01.
+  2) Coletar itens que estao DENTRO de objetos, dando bonus por tempo
+     -> Personagem.cs, funcao VerificarDestrutivel(). Blocos "BlocoImpulso"
+        com o "NucleoImpulso" escondido dentro. Fase01 e fase02.
+  3) Toque indireto
+     -> BotaoToqueIndireto.cs + ToqueIndireto.cs. Fase02.
+  4) Inimigos que se movimentam
+     -> Slime.cs. Fase01.
+  5) Plataformas moveis e teletransporte
+     -> Plataforma.cs e Teletransporte.cs. Fase01.
+
+FRASE DE ABERTURA (decore essa)
+  "Nosso jogo e um plataforma 2D com duas fases. O personagem tem movimento
+   horizontal com flip do sprite, pulo multiplo, consegue carregar caixas
+   segurando F, quebra blocos que tem itens escondidos dentro e ganha um
+   bonus de pulo por tempo. Na fase 2 implementamos o toque indireto: o
+   jogador pisa num botao e uma palmeira escalavel aparece em outro lugar
+   do mapa."
+
+
+===============================================================================
+PARTE 2 - EXPLICACAO DE CADA SCRIPT E CADA FUNCAO
+===============================================================================
+
+-------------------------------------------------------------------------------
+2.1  Personagem.cs   (Assets/Art/Personagem/)
+-------------------------------------------------------------------------------
+E o script principal. Fica no objeto "Personagem", que tem a tag "Player".
+Ele controla o movimento e reage a tudo que o jogador encosta.
+
+VARIAVEIS IMPORTANTES
+  CorpoRigidoPersonagem .... o Rigidbody2D do personagem. E por ele que a
+                             gente muda a velocidade e a gravidade.
+  VelocidadeHorizontalMaxima ... 5.0f - quao rapido ele anda.
+  VelocidadePuloSimples .... 10.0f - forca do pulo.
+  TotalPulos / ContadorPulos ... quantos pulos ele pode dar e quantos ja deu.
+  DirecaoOlhando ........... 1 = olhando pra direita, -1 = pra esquerda.
+                             Serve pra soltar a caixa do lado certo.
+  ObjetoEmContato .......... a caixa que esta encostada nele agora.
+  ObjetoCarregado .......... a caixa que esta na mao dele.
+
+--- void Start() ---
+  Roda UMA VEZ quando a fase comeca.
+  O que ele faz:
+    - Pega o SpriteRenderer (pra poder espelhar o sprite depois).
+    - Pega o Animator (pra ligar/desligar a animacao de andar).
+    - Pega o Rigidbody2D. Se nao existir, ele mesmo adiciona.
+    - Define gravityScale = 3.0f  <<< DECORE ESSE NUMERO, cai em prova.
+    - Define freezeRotation = true, senao o personagem tomba e rola no chao.
+    - Zera as velocidades e o contador de pulos.
+  SE PERGUNTAREM "por que freezeRotation?": porque sem isso o corpo rigido
+  gira ao bater nas quinas e o personagem deita.
+
+--- void Update() ---
+  Roda TODO FRAME. So chama outras tres funcoes:
+    MovimentoPuloMultiplo();
+    MovimentoHorizontalFlip();
+    ControlarCarga();
+  Isso e de proposito: em vez de escrever tudo dentro do Update, a gente
+  separa em blocos com nome, que e o jeito que o professor ensinou.
+
+--- void MovimentoPuloMultiplo() ---
+  Faz o pulo (inclusive pulo duplo).
+    1. Input.GetButtonDown("Jump") -> true no frame em que aperta espaco.
+    2. So pula se ContadorPulos < TotalPulos (é isso que limita a 1 ou 2 pulos).
+    3. Soma 1 no ContadorPulos.
+    4. Pega a velocidade X atual (pra nao perder o movimento horizontal).
+    5. Poe a velocidade Y = VelocidadePuloSimples.
+    6. Monta o Vector2 e joga em CorpoRigidoPersonagem.velocity.
+  O ContadorPulos volta a zero no OnCollisionEnter2D quando toca o "chao".
+
+--- void MovimentoHorizontalFlip() ---
+  Faz o personagem andar e virar o sprite.
+    1. Input.GetAxis("Horizontal") devolve de -1 a 1 (setas ou A/D).
+    2. VelocidadeX = VelocidadeHorizontalMaxima * DirecaoHorizontal.
+    3. VelocidadeY = a que ele ja tinha (pra nao atrapalhar o pulo/queda).
+       ESSE PONTO E IMPORTANTE: se a gente zerasse o Y aqui, o personagem
+       nao conseguiria cair nem pular.
+    4. Aplica a velocidade no corpo rigido.
+    5. Liga/desliga o bool "andando" do Animator.
+    6. Se esta indo pra esquerda, flipX = true (espelha o desenho).
+  Essa funcao e igual a da Aula 03x08 do professor.
+
+--- void MovimentoPulo() / MovimentoPuloUnico() / MovimentoPuloSimples() /
+    void MovimentoVertical() ---
+  ATENCAO: essas quatro NAO SAO CHAMADAS. Sao as versoes que fizemos nas
+  aulas anteriores e ficaram guardadas no arquivo. Se o professor apontar,
+  responda com sinceridade: "sao versoes anteriores do pulo que ficaram
+  no codigo, a que vale e a MovimentoPuloMultiplo".
+  (Se der tempo antes da apresentacao, o melhor e apagar as quatro.)
+
+--- void OnCollisionEnter2D(Collision2D objetoTocado) ---
+  Roda no momento em que o personagem BATE em alguma coisa solida.
+  Le a tag do que bateu e decide o que fazer:
+    - Chama VerificarDestrutivel() (bloco separado, jeito do professor).
+    - tag "chao" ........... zera ContadorPulos (libera pular de novo).
+    - tag "carregar" ....... zera ContadorPulos (da pra pular de cima da caixa).
+    - tag "bonusPuloTemporario" ... chama IniciarBoostPulo() e destroi o item.
+    - tag "morte" .......... SceneManager.LoadScene("morte") = game over.
+  DIFERENCA IMPORTANTE: colisao (Collision) e quando os dois se empurram.
+  Trigger e quando um atravessa o outro. Ver PARTE 3.
+
+--- void OnTriggerEnter2D(Collider2D objetoTriggerTocado) ---
+  Roda quando o personagem ATRAVESSA um colisor marcado como "Is Trigger".
+  Aqui so tem o caso da tag "teletransporte".
+  OBS DE HONESTIDADE: nenhum objeto das nossas fases usa essa tag, entao
+  esse bloco nao roda. Quem faz o teletransporte de verdade e o
+  Teletransporte.cs.
+
+--- void OnCollisionStay2D(Collision2D objetoTocado) ---
+  Roda TODO FRAME enquanto o personagem estiver encostado em algo.
+  So faz uma coisa: se a tag contem "carregar", guarda esse objeto em
+  ObjetoEmContato.
+  POR QUE SO GUARDAR E NAO PEGAR AQUI? Porque quem decide pegar e o Update.
+  Se a gente lesse a tecla F aqui dentro, o jogador teria que apertar F no
+  frame exato em que encostou. Guardando primeiro, ele pode encostar e
+  apertar F depois, com calma.
+
+--- void OnCollisionExit2D(Collision2D objetoParouTocar) ---
+  Roda quando para de encostar. Limpa o ObjetoEmContato.
+  Tem um cuidado: so limpa se o objeto NAO for o que esta sendo carregado,
+  porque a caixa carregada perde o contato de proposito (ela sobe pra mao).
+
+--- void VerificarDestrutivel(Collision2D objetoTocado) ---
+  ESSE E O REQUISITO "ITENS DENTRO DE BLOCOS" (Aula 03x02).
+  E chamado de dentro do OnCollisionEnter2D.
+  Quando bate num bloco com a tag "destrutivel1":
+    1. GetChild(0) -> pega o filho zero do bloco, que e o item escondido.
+    2. item.transform.parent = null -> desanexa o item do bloco.
+    3. Liga o SpriteRenderer do item (ele estava desligado, invisivel).
+    4. AddComponent<BoxCollider2D>() -> da um colisor pro item.
+    5. AddComponent<Rigidbody2D>() -> da fisica pro item.
+    6. velocity = (0, 10) -> o item pula pra cima, igual bloco do Mario.
+    7. item.tag = "bonusPuloTemporario" -> marca pro personagem reconhecer
+       depois, quando encostar nele.
+    8. Destroy(bloco) -> o bloco some.
+  Tem tambem o caso "destrutivel2", que tem DOIS filhos (uma capa e o item).
+  Ele nao esta sendo usado nas fases, so o destrutivel1.
+  SE PERGUNTAREM "por que GetChild(0)?": porque no Unity os filhos ficam
+  numerados a partir de zero na hierarquia; o filho zero e o primeiro.
+
+--- void IniciarBoostPulo(float duracao, float multiplicador) ---
+  Liga o bonus de pulo. Antes de comecar um novo, ele CANCELA o anterior
+  com StopCoroutine. Sem isso, se o jogador pegasse dois itens seguidos,
+  os dois temporizadores brigariam e o valor final ficaria errado.
+
+--- IEnumerator BoostPuloTemporario(float duracao, float multiplicador) ---
+  ESSE E O REQUISITO "BONUS POR TEMPO DETERMINADO".
+    1. Multiplica a forca do pulo (10 * 1.6 = 16).
+    2. Guarda o tempo em TempoRestanteBoost.
+    3. Fica num "while" tirando Time.deltaTime do tempo restante, um pouco
+       por frame, ate chegar em zero.
+    4. Devolve a forca de pulo original.
+  POR QUE Time.deltaTime? Porque ele mede o tempo real entre um frame e
+  outro. Se contassemos frames, num PC rapido o bonus duraria menos.
+  POR QUE UM WHILE E NAO UM WaitForSeconds UNICO? Porque o HUD precisa
+  mostrar a contagem regressiva na tela; com espera unica nao dava pra
+  saber quanto falta.
+  AVISO: isso e uma "coroutine" (IEnumerator + StartCoroutine). Na Aula
+  03x07 o professor ensinou dois outros jeitos: contar deltaTime dentro do
+  Update, ou usar Invoke("Metodo", tempo). Se ele perguntar por que voces
+  usaram coroutine, a resposta boa e: "porque a coroutine deixa a contagem
+  isolada nela mesma e permite cancelar e reiniciar o bonus com
+  StopCoroutine, sem precisar de variaveis de controle espalhadas".
+
+--- void ControlarCarga() ---
+  REQUISITO "MOVER ITENS SEGURANDO UMA TECLA". Chamada do Update.
+    - Se esta segurando F, nao esta carregando nada e tem caixa encostada
+      -> PegarObjeto().
+    - Se SOLTOU o F e esta carregando algo -> SoltarObjeto().
+
+--- void PegarObjeto(GameObject objeto) ---
+    1. Guarda a caixa em ObjetoCarregado e pega o Rigidbody2D dela.
+    2. Zera a velocidade da caixa.
+    3. CorpoRigidoObjeto.simulated = false -> DESLIGA a fisica da caixa.
+       Isso e o mais importante: sem isso a caixa continuaria caindo,
+       escorregando e empurrando o personagem enquanto estivesse na mao.
+    4. objeto.transform.parent = gameObject.transform -> a caixa vira FILHA
+       do personagem, entao anda junto com ele. (Aula 03x01)
+    5. Posiciona a caixa 1.2 unidades acima da cabeca.
+
+--- void SoltarObjeto() ---
+    1. Coloca a caixa NA FRENTE do personagem (usando DirecaoOlhando),
+       e nao em cima da cabeca - senao ela cairia nele e o empurraria.
+    2. parent = null -> tira a caixa da hierarquia do personagem.
+    3. simulated = true -> religa a fisica, a caixa volta a cair.
+    4. Zera as variaveis de controle.
+
+
+-------------------------------------------------------------------------------
+2.2  BotaoToqueIndireto.cs   (Assets/Art/)  *** REQUISITO TOQUE INDIRETO ***
+-------------------------------------------------------------------------------
+Fica no objeto "ativadortoqueindireto" da fase02 (o botao no chao).
+O TRONCO da palmeira esta na hierarquia como FILHO desse botao, escondido
+la embaixo (posicao Y = -1000), fora da area visivel da fase.
+
+IDEIA DA MECANICA (explique assim):
+  "O jogador toca no BOTAO, mas o efeito acontece em OUTRO objeto, em outro
+   lugar do mapa: uma palmeira escalavel aparece na plataforma da esquerda.
+   Por isso e toque indireto - quem foi tocado nao e quem sofre o efeito."
+
+VARIAVEIS
+  PosicaoDoTroncoX / PosicaoDoTroncoY ... aparecem no Inspector. E a
+      coordenada onde a palmeira vai nascer. Estao em (-0.5 , 55).
+  BotaoJaFoiPisado ... trava pra mecanica so acontecer uma vez.
+  TagDoTronco ... constante com o texto "ToqueIndireto".
+
+--- void Start() ---
+  Inicializa as variaveis: tag vazia e BotaoJaFoiPisado = false.
+
+--- void OnCollisionEnter2D(Collision2D objetoTocado) ---
+    1. Le a tag de quem encostou.
+    2. Se contem "Player" e o botao ainda nao foi pisado:
+       marca BotaoJaFoiPisado = true e chama MostrarTronco().
+  A trava existe pra palmeira nao ser criada de novo toda vez que o jogador
+  pisar no botao.
+
+--- void MostrarTronco() ---
+  E o coracao da mecanica. Usa as mesmas tecnicas da Aula 03x02:
+    1. Confere se o botao tem filho (senao avisa no Console e sai).
+    2. GetChild(0) -> pega o tronco, que e o filho zero do botao.
+    3. tronco.transform.parent = null -> desanexa. Sem isso a palmeira
+       andaria junto com o botao.
+    4. SetActive(true) -> garante que esteja ligada.
+    5. tronco.transform.position = (PosicaoDoTroncoX, PosicaoDoTroncoY)
+       -> TELEPORTA a palmeira pro lugar certo do mapa.
+    6. AddComponent<BoxCollider2D>() -> da um colisor pra palmeira
+       (so adiciona se ainda nao tiver, pra nao ficarem dois colisores).
+    7. colisor.isTrigger = true -> marca como GATILHO. Isso e o que faz o
+       jogador ATRAVESSAR a palmeira em vez de esbarrar nela, que e o que
+       permite escalar por dentro.
+    8. tronco.tag = "ToqueIndireto" -> marca a palmeira.
+
+  POR QUE A PALMEIRA JA NAO NASCE PRONTA NA FASE?
+  Porque assim ela so existe DEPOIS que o jogador resolveu o desafio do
+  botao. E o que transforma isso em mecanica de jogo e nao em cenario.
+
+
+-------------------------------------------------------------------------------
+2.3  ToqueIndireto.cs   (Assets/Art/)   *** o script da palmeira ***
+-------------------------------------------------------------------------------
+Fica no TRONCO da palmeira. Faz ela funcionar como uma escada.
+
+VARIAVEIS
+  VelocidadeDeEscalada ... 3 - velocidade de subida.
+  GravidadeDoJogador ..... 3 - reserva, caso a gravidade guardada falhe.
+  GravidadeGuardada ...... guarda a gravidade REAL do jogador na entrada.
+
+--- void Start() ---
+  Zera as variaveis de controle.
+
+--- void OnTriggerEnter2D(Collider2D objetoTrigger) ---
+  Roda no primeiro frame em que o jogador ENTRA na palmeira.
+    1. Confere se e o Player.
+    2. GUARDA a gravidade atual dele em GravidadeGuardada.
+       Isso e importante: assim, na hora de sair, devolvemos exatamente o
+       valor que ele tinha, sem depender de alguem ter digitado o numero
+       certo no Inspector.
+    3. Zera a velocidade Y. Sem isso, a velocidade da queda anterior
+       continuaria empurrando ele pra baixo no comeco da escalada.
+
+--- void OnTriggerStay2D(Collider2D objetoTrigger) ---
+  Roda TODO FRAME enquanto o jogador estiver dentro da palmeira.
+    1. Confere se e o Player e pega o Rigidbody2D dele.
+    2. gravityScale = 0 -> DESLIGA a gravidade. Sem isso ele escorregaria
+       pra baixo e nunca conseguiria ficar parado na escada.
+    3. Input.GetAxis("Vertical") -> le as setas cima/baixo (-1 a 1).
+    4. Mantem a velocidade X (quem manda nela continua sendo o
+       Personagem.cs) e troca so a velocidade Y pela da escalada.
+    5. Aplica no corpo rigido.
+  E a mesma ideia do MovimentoVertical() da Aula 02x05.
+
+--- void OnTriggerExit2D(Collider2D objetoTrigger) ---
+  Roda quando o jogador SAI da palmeira.
+    1. Confere se e o Player.
+    2. DEVOLVE a gravidade (usando a GravidadeGuardada).
+  SE NAO FIZESSE ISSO o jogador sairia da palmeira flutuando pelo mapa
+  inteiro, porque a gravidade continuaria em zero. Esse e o erro classico
+  dessa mecanica - vale citar na apresentacao, mostra que voces entenderam.
+
+  ONDE FICA A PALMEIRA: coordenada (-0.5 , 55). Isso e o centro do bloco do
+  meio da plataforma da esquerda. A palmeira tem 10 unidades de altura,
+  entao ela vai de Y=50 (topo da plataforma) ate Y=60, preenchendo um poco
+  vertical que existe no cenario e levando o jogador pro andar de cima.
+
+
+-------------------------------------------------------------------------------
+2.4  Plataforma.cs   (Assets/Art/)   *** REQUISITO PLATAFORMA MOVEL ***
+-------------------------------------------------------------------------------
+Esse script e praticamente igual ao da Aula 03x03. Fica na plataforma.
+
+VARIAVEIS
+  Distancia ............ quanto ela anda antes de voltar.
+  VelocidadeMovimento .. quao rapido.
+  Direcao .............. Vector2 que diz o sentido:
+                         (1,0) direita | (-1,0) esquerda
+                         (0,1) cima    | (0,-1) baixo | (1,1) diagonal
+  AtivaAoIniciar ....... se false, a plataforma comeca parada.
+
+--- void Start() ---
+  Pega o Transform, GUARDA a posicao inicial e zera o tempo.
+  Guardar a posicao inicial e essencial: todo o movimento e calculado a
+  partir dela, e nao da posicao atual.
+
+--- void Update() ---
+  Se estiver ativa, chama mover() todo frame.
+
+--- public void Ativar() ---
+  Liga uma plataforma que comecou parada. Serve pra ser chamada de fora.
+
+--- void mover() ---
+    1. TempoDecorrido += Time.deltaTime * VelocidadeMovimento.
+    2. Mathf.PingPong(TempoDecorrido, Distancia) -> devolve um numero que
+       sobe de 0 ate Distancia e VOLTA, sem nunca passar disso. E o que
+       cria o vai-e-vem sem precisar de if pra inverter o sentido.
+    3. position = PosicaoInicial + Direcao.normalized * movimento.
+       O .normalized deixa o vetor com tamanho 1, pra diagonal nao ficar
+       mais rapida que a horizontal.
+  SE PERGUNTAREM "o que e PingPong?": e uma funcao do Mathf que faz o valor
+  ir e voltar entre 0 e um limite, igual uma bolinha de ping-pong.
+
+--- void OnCollisionEnter2D() ---
+  Quando o jogador pisa nela, faz ele virar FILHO da plataforma
+  (transform.parent = TransformPlataforma). E isso que faz o jogador ser
+  carregado junto com a plataforma. Sem isso ele escorregaria e ficaria
+  parado no ar enquanto a plataforma anda embaixo dele.
+
+--- void OnCollisionExit2D() ---
+  Quando ele sai, parent = null, e o jogador para de seguir a plataforma.
+
+
+-------------------------------------------------------------------------------
+2.5  Slime.cs   (Assets/Art/)   *** REQUISITO INIMIGO QUE SE MOVIMENTA ***
+-------------------------------------------------------------------------------
+Baseado no Inimigo.cs da Aula 03x04. Anda de um lado pro outro.
+
+--- void Start() ---
+  Pega o Transform e o SpriteRenderer, guarda a posicao inicial, zera o
+  tempo e o MovimentoAnterior.
+
+--- void Update() ---
+  Chama mover().
+
+--- void mover() ---
+  Mesma logica da plataforma (PingPong), MAIS o espelhamento do sprite:
+    - Guarda o valor do movimento do frame passado em MovimentoAnterior.
+    - Se o movimento atual e MAIOR que o anterior, ele esta indo pra frente
+      -> flipX = false.
+    - Se e MENOR, ele voltou -> flipX = true.
+  Assim o slime "olha" pro lado pra onde esta andando.
+  QUAL A DIFERENCA PRA PLATAFORMA? So o flip do sprite. O movimento e o
+  mesmo PingPong. (O proprio professor faz essa pergunta no slide da aula.)
+
+  COMO O JOGADOR MORRE: o slime tem a tag "morte". No OnCollisionEnter2D do
+  Personagem, tag "morte" carrega a cena de game over.
+
+
+-------------------------------------------------------------------------------
+2.6  Teletransporte.cs   (Assets/Art/)   *** REQUISITO TELETRANSPORTE ***
+-------------------------------------------------------------------------------
+Fica no portal. O colisor dele precisa estar marcado como "Is Trigger".
+
+VARIAVEIS
+  Destino .......... Vector2 com o X e Y pra onde manda o jogador.
+  ZerarVelocidade .. se true, ele chega parado no destino.
+
+--- void OnTriggerEnter2D(Collider2D objetoQueEntrou) ---
+    1. Se nao for o Player, sai fora (return).
+       Isso evita que uma caixa empurrada ate o portal seja teleportada.
+    2. Muda o transform.position do jogador pro Destino.
+    3. Se ZerarVelocidade estiver marcado, zera a velocity do Rigidbody2D.
+  POR QUE ZERAR A VELOCIDADE? Porque senao ele chega no destino ainda
+  caindo ou correndo, e pode atravessar o chao ou escorregar.
+  DETALHE DA AULA 03x08: se o destino for exatamente cima de outro portal,
+  vira loop infinito. Por isso o destino e uma coordenada nossa, um pouco
+  afastada.
+
+
+-------------------------------------------------------------------------------
+2.7  Porta.cs  e  Portafim.cs   (Assets/Art/)
+-------------------------------------------------------------------------------
+Os dois trocam de cena, mas de jeitos diferentes.
+
+Porta.cs (usado na fase01)
+--- void OnTriggerEnter2D() ---
+  Precisa de "Is Trigger" ligado. Se quem entrou for o Player e o campo
+  CenaParaCarregar estiver preenchido, chama SceneManager.LoadScene().
+  E o que leva da fase01 pra fase02.
+
+Portafim.cs (usado na fase02)
+--- void Start() --- inicializa a variavel de tag.
+--- void OnCollisionEnter2D() ---
+  Usa COLISAO (nao trigger). Se for o Player e o nome da cena estiver
+  preenchido, carrega a cena dos creditos. Se estiver vazio, avisa no
+  Console com print(), pra ficar facil achar a porta mal configurada.
+
+IMPORTANTE: a cena precisa estar cadastrada em File > Build Settings,
+senao o LoadScene nao acha e nao acontece nada. Se o professor perguntar
+por que a porta nao funciona em algum PC, e quase sempre isso.
+
+
+-------------------------------------------------------------------------------
+2.8  BotaoCena.cs   (Assets/Art/)   - usado nos menus
+-------------------------------------------------------------------------------
+--- void OnMouseDown() ---
+  O Unity chama sozinho quando o jogador CLICA em cima do colisor do
+  objeto. Carrega a cena escrita no campo CenaParaCarregar.
+  DETALHE: o objeto nao tem sprite. E so uma area de colisao invisivel
+  colocada exatamente em cima do botao que esta desenhado na imagem de
+  fundo do menu.
+
+
+-------------------------------------------------------------------------------
+2.9  A CAMERA   (Main Camera, nas cenas fase01 e fase02)
+-------------------------------------------------------------------------------
+A camera NAO USA SCRIPT. Ela segue o personagem porque esta na hierarquia
+como FILHA do objeto Personagem - que e exatamente o jeito ensinado nas
+Aulas 03x01 e 03x02 ("Personagem e parent de Main Camera").
+
+COMO FUNCIONA (explique assim):
+  "Todo GameObject tem um Transform. Quando um objeto e filho de outro na
+   hierarquia, a posicao dele passa a ser RELATIVA a do pai. Entao a camera
+   guarda um deslocamento fixo em relacao ao personagem e anda junto com
+   ele automaticamente, sem precisar de nenhuma linha de codigo."
+
+A POSICAO LOCAL DA CAMERA: (x: 0, y: 1, z: -10)
+  x = 0 .... centralizada no personagem.
+  y = 1 .... um pouco ACIMA dele, pra mostrar mais cenario pra cima.
+  z = -10 .. ESSE E O IMPORTANTE. Em 2D a camera precisa ficar ATRAS do
+             cenario. Se o Z virar 0, ela "entra" na fase e nao renderiza
+             nada - a tela fica vazia.
+
+SE PERGUNTAREM "e o Z, por que -10?"
+  Porque em 2D os objetos ficam em Z = 0 e a camera precisa enxergar de
+  tras pra frente. Como ela e filha, esse -10 e relativo ao personagem,
+  entao a distancia se mantem mesmo com ele andando.
+
+OBS: existe no projeto o arquivo CameraSeguir.cs, que era uma versao com
+script (usava LateUpdate e Vector3.SmoothDamp pra suavizar). Tiramos ele
+das duas fases pra ficar do jeito da aula. Se o professor abrir o arquivo,
+diga: "era nossa versao anterior com script, trocamos pela camera filha na
+hierarquia, que e o jeito que o senhor ensinou".
+
+-------------------------------------------------------------------------------
+2.10  Moeda.cs   (Assets/Art/Moeda/)
+-------------------------------------------------------------------------------
+Moeda coletavel. O giro dela vem de uma ANIMACAO (moeda_giro.anim, no
+Animator), que so troca o sprite. A flutuacao e o efeito de coleta sao
+feitos aqui no codigo, porque mexem em posicao e escala - coisas que a
+animacao nao toca. Assim os dois nao brigam pelo mesmo valor.
+
+--- void Start() ---
+  Guarda a altura inicial e calcula uma "Defasagem" somando X + Y da
+  posicao. Isso serve pra cada moeda flutuar num tempo diferente. Sem
+  isso, TODAS as moedas da fase subiriam e desceriam no mesmo instante,
+  o que fica artificial.
+
+--- void Update() ---
+  Faz a moeda flutuar usando Mathf.Sin (seno), que vai de -1 a 1 e volta,
+  criando o sobe-e-desce suave.
+
+--- void OnTriggerEnter2D() ---
+    1. So o Player coleta.
+    2. Trava JaFoiColetada, senao o trigger dispararia de novo durante o
+       efeito e contaria a moeda em dobro.
+    3. ContadorMoedas.Adicionar(Valor) -> soma no contador.
+    4. Desliga o colisor.
+    5. StartCoroutine(EfeitoDeColeta()).
+
+--- IEnumerator EfeitoDeColeta() ---
+  Em vez de sumir de um frame pro outro, a moeda cresce, sobe um pouco e
+  vai ficando transparente (mexendo no canal alpha da cor), e so entao e
+  destruida com Destroy(gameObject).
+
+
+-------------------------------------------------------------------------------
+2.11  ContadorMoedas.cs   (Assets/Art/Moeda/)
+-------------------------------------------------------------------------------
+Desenha o contador de moedas na tela, sem usar Canvas (usa OnGUI).
+
+--- public static void Adicionar(int quantidade) ---
+  Soma no total. E STATIC, ou seja, pertence a CLASSE e nao a um objeto.
+  POR QUE STATIC? Duas razoes:
+    1. A moeda nao precisa procurar o objeto do HUD na cena pra somar.
+    2. O valor NAO SE PERDE quando o SceneManager troca de cena. E isso que
+       faz as moedas juntadas na fase01 continuarem valendo na fase02.
+  Usa Debug.Log em vez de print, porque print e um metodo de instancia do
+  MonoBehaviour e nao pode ser chamado de dentro de um metodo static.
+
+--- public static void Zerar() --- zera o total.
+
+--- void Awake() ---
+  Se ZerarAoComecar estiver marcado, zera. Esse campo so esta marcado na
+  fase01, que e onde uma partida comeca de verdade. Na fase02 fica
+  desmarcado, senao o total zeraria no meio do jogo.
+
+--- void OnGUI() ---
+  Desenha o icone e o numero. O icone gira: a folha moeda_giro.png tem 13
+  quadros lado a lado, e o GUI.DrawTextureWithTexCoords desenha so o
+  pedaco do quadro atual, calculado pelo tempo. O numero e desenhado duas
+  vezes - preto deslocado 1 pixel (sombra) e branco por cima - senao o
+  texto some em cima do ceu claro.
+
+
+-------------------------------------------------------------------------------
+2.12  HudProgresso.cs   (Assets/Art/)
+-------------------------------------------------------------------------------
+--- void Start() ---
+  Se ninguem arrastou o Personagem no Inspector, ele procura sozinho com
+  GameObject.FindGameObjectWithTag("Player").
+
+--- void OnGUI() ---
+  Se TempoRestanteBoost for maior que zero, desenha na tela
+  "Boost de pulo: X.Xs". E a contagem regressiva do bonus.
+  O ToString("F1") formata com 1 casa decimal.
+  Fica 50 pixels abaixo do topo pra nao cobrir o contador de moedas.
+
+
+-------------------------------------------------------------------------------
+2.13  CreditosRolagem.cs   (Assets/Art/Cenas/)
+-------------------------------------------------------------------------------
+--- void Start() ---
+  Invoke("IniciarMovimento", tempoEspera) -> chama a funcao IniciarMovimento
+  depois de X segundos. O Invoke recebe o NOME do metodo como texto.
+  (Esse Invoke e exatamente a tecnica da Aula 03x07.)
+
+--- void IniciarMovimento() --- so liga o bool "movendo".
+
+--- void Update() ---
+  Enquanto movendo for true, usa Vector3.MoveTowards pra subir o texto ate
+  a posicaoFinalY. Quando chega, para.
+  Mathf.Approximately compara dois floats "quase iguais" - com float nao da
+  pra usar == direto, porque quase nunca bate exatamente.
+
+
+-------------------------------------------------------------------------------
+2.14  Alavanca.cs   (Assets/Art/)   -- NAO ESTA SENDO USADO
+-------------------------------------------------------------------------------
+Foi uma PRIMEIRA versao do toque indireto: o jogador encostava numa
+alavanca e isso ligava plataformas paradas e/ou fazia barreiras sumirem.
+Nao esta em nenhuma cena. A versao que vale e a do botao + palmeira.
+SE O PROFESSOR ABRIR ESSE ARQUIVO, diga a verdade: "foi nossa primeira
+tentativa de toque indireto, ficou no projeto mas nao esta em uso".
+(Melhor ainda: apague o arquivo antes de apresentar.)
+
+
+===============================================================================
+PARTE 3 - CONCEITOS QUE O PROFESSOR COSTUMA PERGUNTAR
+===============================================================================
+
+COLISAO x TRIGGER  (a pergunta mais comum)
+  Collision (Is Trigger DESMARCADO): os objetos se empurram, um nao passa
+    pelo outro. Eventos: OnCollisionEnter2D / Stay / Exit2D.
+    Recebe um parametro do tipo Collision2D.
+  Trigger (Is Trigger MARCADO): o objeto ATRAVESSA, nao empurra, mas o
+    evento dispara. Eventos: OnTriggerEnter2D / Stay / Exit2D.
+    Recebe um parametro do tipo Collider2D.
+  NO NOSSO JOGO: o botao e colisao (o jogador pisa em cima). A palmeira e
+  trigger (o jogador entra dentro pra escalar). Moeda e trigger. Portal e
+  trigger.
+  DETALHE: pelo menos UM dos dois objetos precisa ter Rigidbody2D pro
+  evento disparar.
+
+ENTER x STAY x EXIT
+  Enter -> uma vez, no frame em que encosta.
+  Stay  -> todo frame, enquanto continua encostado.
+  Exit  -> uma vez, no frame em que para de encostar.
+
+TRANSFORM
+  Componente que TODO GameObject tem. Guarda position, rotation e scale.
+  transform.position = posicao no mundo.
+  transform.localScale = tamanho.
+
+TRANSFORM.PARENT
+  Define quem e o "pai" do objeto na hierarquia. O filho anda junto com o
+  pai. parent = null desanexa.
+  USAMOS EM 4 LUGARES: caixa carregada (vira filha do personagem), jogador
+  em cima da plataforma movel, item saindo de dentro do bloco, e a palmeira
+  saindo de dentro do botao.
+
+GetChild(0)
+  Pega o filho de indice zero. Os filhos sao numerados a partir do 0.
+  E como a gente esconde coisas dentro de outras: o item fica dentro do
+  bloco, a palmeira fica dentro do botao.
+
+RIGIDBODY2D e gravityScale
+  Rigidbody2D e quem da fisica pro objeto (gravidade, velocidade).
+  gravityScale multiplica a gravidade: 0 = flutua, 3 = cai rapido.
+  Nosso personagem usa 3. A palmeira zera pra 0 pra poder escalar, e
+  devolve pra 3 quando o jogador sai.
+
+velocity
+  E um Vector2 (X, Y). O truque que a gente usa o tempo todo: quando quer
+  mudar so um eixo, le o outro do proprio velocity e monta um Vector2 novo.
+  Ex: andar mexe so no X e copia o Y; escalar mexe so no Y e copia o X.
+
+Time.deltaTime
+  Tempo em segundos que o ultimo frame levou. Serve pra que a velocidade
+  seja a mesma em qualquer PC. Sem ele, um PC com mais FPS deixaria tudo
+  mais rapido.
+
+Mathf.PingPong(t, limite)
+  Devolve um valor que sobe de 0 ate o limite e volta, pra sempre. E o que
+  faz plataforma e slime irem e voltarem sem nenhum if.
+
+Input.GetAxis("Horizontal") / ("Vertical")
+  Devolve de -1 a 1 conforme as setas / WASD.
+Input.GetButtonDown("Jump")
+  True SO no frame em que aperta (bom pra pulo).
+Input.GetKey(KeyCode.F)
+  True ENQUANTO estiver segurando (bom pra carregar caixa).
+
+TAG
+  Etiqueta de texto no objeto. A gente le com objeto.gameObject.tag.
+  ATENCAO: a tag tem que estar cadastrada em Edit > Project Settings >
+  Tags and Layers, e escrita EXATAMENTE igual (maiuscula/minuscula conta).
+  Se escrever errado, o Unity lanca erro na hora de atribuir.
+
+
+===============================================================================
+PARTE 4 - PERGUNTAS PROVAVEIS E RESPOSTAS
+===============================================================================
+
+P: O que e toque indireto no seu jogo?
+R: E quando o jogador toca um objeto A e o efeito acontece num objeto B,
+   em outro lugar da fase. No nosso caso o jogador pisa num botao na
+   plataforma da direita e uma palmeira escalavel aparece na plataforma da
+   esquerda, num poco vertical, liberando o caminho pro andar de cima.
+
+P: Como voces esconderam a palmeira antes de o botao ser pisado?
+R: Ela esta na hierarquia como filha do botao, com a posicao Y em -1000,
+   ou seja, muito abaixo da area visivel da fase. Quando o botao e pisado,
+   a gente desanexa ela com parent = null e teleporta pra posicao certa.
+
+P: Por que a palmeira e trigger e nao colisao?
+R: Porque pra escalar o jogador precisa ficar DENTRO dela. Se fosse
+   colisao ele esbarraria e nao entraria.
+
+P: Como o jogador sobe na palmeira?
+R: No OnTriggerStay2D a gente zera a gravidade dele e le a seta vertical
+   com Input.GetAxis("Vertical"), montando uma velocidade Y de escalada.
+
+P: E quando ele sai da palmeira?
+R: No OnTriggerExit2D devolvemos a gravidade que ele tinha. Se esquecesse
+   disso, ele sairia flutuando pela fase toda.
+
+P: Por que o botao so funciona uma vez?
+R: Tem um bool BotaoJaFoiPisado. Sem ele, cada vez que o jogador pisasse
+   de novo o codigo tentaria criar a palmeira outra vez.
+
+P: Como funciona o item dentro do bloco?
+R: O item esta como filho do bloco, com o SpriteRenderer desligado. Quando
+   o jogador bate no bloco, pegamos com GetChild(0), desanexamos, ligamos
+   o sprite, adicionamos BoxCollider2D e Rigidbody2D, damos velocidade
+   (0,10) pra ele pular pra cima, trocamos a tag e destruimos o bloco.
+
+P: Como funciona o bonus por tempo?
+R: Quando o jogador encosta no item, multiplicamos a forca do pulo por 1.6
+   e comecamos uma contagem regressiva com Time.deltaTime. Quando o tempo
+   acaba, a forca volta ao normal. O HUD mostra os segundos restantes.
+
+P: Como o jogador carrega a caixa?
+R: Segurando F. A caixa vira filha do personagem (transform.parent), e a
+   gente desliga a fisica dela com simulated = false pra ela nao cair nem
+   empurrar o personagem. Ao soltar o F, religamos a fisica e tiramos o
+   parent.
+
+P: Por que o jogador anda junto com a plataforma movel?
+R: Porque no OnCollisionEnter2D da plataforma ele vira filho dela. No
+   OnCollisionExit2D o parent volta a ser null.
+
+P: Como o jogador morre?
+R: Os objetos perigosos tem a tag "morte". No OnCollisionEnter2D do
+   Personagem, se a tag for "morte", carregamos a cena de game over com
+   SceneManager.LoadScene("morte").
+
+P: Como as moedas continuam contando entre as fases?
+R: O total fica numa variavel static, que pertence a classe e nao ao
+   objeto, entao nao se perde quando troca de cena.
+
+P: Como a camera segue o personagem?
+R: Ela nao usa script nenhum. Esta na hierarquia como FILHA do Personagem,
+   entao a posicao dela e relativa a dele e ela anda junto automaticamente.
+   E o jeito mostrado nas Aulas 03x01 e 03x02. A posicao local dela e
+   (0, 1, -10): centralizada, um pouco acima, e 10 unidades atras do
+   cenario - se o Z fosse 0 a camera entraria na fase e nao renderizaria.
+
+
+===============================================================================
+PARTE 5 - PONTOS FRACOS (leia pra nao ser pego de surpresa)
+===============================================================================
+
+1) O toque indireto nao esta no formato exato da Aula 03x06.
+   Na aula, o professor faz o toque indireto dentro do OnTriggerEnter2D do
+   PROPRIO PERSONAGEM, achando o objeto B com
+   GameObject.FindGameObjectWithTag("tag"). A gente fez com dois scripts
+   proprios (um no botao e um na palmeira), usando GetChild / parent = null
+   / AddComponent, que sao tecnicas da Aula 03x02.
+   RESPOSTA SE PERGUNTAREM: "e toque indireto do mesmo jeito, o jogador
+   toca o botao e o efeito acontece na palmeira, em outro lugar do mapa.
+   Escolhemos deixar a logica no proprio botao pra cada botao poder ter
+   seu proprio destino, sem precisar de uma tag diferente pra cada um."
+
+2) O bonus por tempo usa coroutine (IEnumerator / StartCoroutine).
+   A Aula 03x07 ensinou dois jeitos: contar Time.deltaTime dentro do Update
+   ou usar Invoke("Metodo", tempo). Coroutine nao foi dado em aula.
+   RESPOSTA: "usamos coroutine porque ela deixa a contagem isolada e
+   permite cancelar e reiniciar o bonus com StopCoroutine se o jogador
+   pegar dois itens seguidos". (O conceito de Time.deltaTime, que e o que
+   ele quer ouvir, esta la dentro do while do mesmo jeito.)
+
+3) Tem codigo que nao roda no Personagem.cs.
+   Esses blocos existem mas nenhum objeto das fases usa essas tags:
+   bonusPuloUnico, bonusPuloDuplo, Diamante01/02/03, tipo1, tipo2,
+   chave01, Fim, teletransporte e destrutivel2.
+   Sao exercicios das aulas que ficaram guardados no arquivo.
+   RESPOSTA: "sao mecanicas que testamos durante as aulas e deixamos no
+   codigo como referencia; as que estao em uso no jogo sao chao, carregar,
+   morte, destrutivel1 e bonusPuloTemporario."
+   MELHOR AINDA: apague antes de apresentar.
+
+4) Tem 4 funcoes de pulo no Personagem.cs e so uma e usada.
+   MovimentoPulo, MovimentoPuloUnico, MovimentoPuloSimples e
+   MovimentoVertical nunca sao chamadas. A que vale e MovimentoPuloMultiplo.
+
+5) Alavanca.cs nao esta em nenhuma cena.
+
+6) ContadorMoedas.cs e Moeda.cs usam recursos mais
+   avancados que os das aulas (static, GUIStyle,
+   DrawTextureWithTexCoords, coroutine). Sao os arquivos que mais exigem
+   preparo pra explicar. Se nao tiver seguranca em algum, foque a
+   apresentacao nos outros - mas saiba dizer o que ele faz.
+
+7) A fase02 nao tem plataforma movel, inimigo nem teletransporte - eles
+   estao todos na fase01. Se o professor pedir pra ver, abra a fase01.
+
+
+===============================================================================
+CHECKLIST DE 5 MINUTOS ANTES DE APRESENTAR
+===============================================================================
+[ ] Abrir o Unity e dar Play uma vez em cada fase, pra ver se nao ha erro
+    vermelho no Console.
+[ ] Conferir File > Build Settings: todas as cenas cadastradas
+    (menuPrincipal, menuFases, fase01, fase02, morte, creditos).
+[ ] Testar o caminho completo: menu -> fase01 -> porta -> fase02 -> pisar
+    no botao -> escalar a palmeira -> porta do fim -> creditos.
+[ ] Testar o botao do toque indireto e ver a palmeira aparecer.
+[ ] Saber dizer de cor: gravityScale = 3, velocidade = 5, pulo = 10.
+[ ] Cada integrante do grupo escolher 3 scripts pra dominar bem.
+[ ] Imprimir a ficha de avaliacao (o professor pede impressa).
+
+BOA SORTE!
+===============================================================================
