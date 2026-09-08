@@ -28,7 +28,8 @@ public class HudProgresso : MonoBehaviour
 
         if (Jogador.TempoRestanteBoost > 0f)
         {
-            GUI.Label(new Rect(10, 10, 260, 25), "Boost de pulo: " + Jogador.TempoRestanteBoost.ToString("F1") + "s");
+            // Desce 50px: o canto superior esquerdo agora e do ContadorMoedas.
+            GUI.Label(new Rect(10, 50, 260, 25), "Boost de pulo: " + Jogador.TempoRestanteBoost.ToString("F1") + "s");
         }
     }
 }

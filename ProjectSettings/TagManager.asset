@@ -21,6 +21,9 @@ TagManager:
   - alavanca
   - destrutivel1
   - destrutivel2
+  - ToqueIndireto
+  - ativadortoqueindireto
+  - portafim
   layers:
   - Default
   - TransparentFX
